@@ -90,7 +90,7 @@ function usePostComments(id: number) {
         postComments.map((comment) => 
           comment.id === commentId ? { ...comment, content } : comment)
       );
-      
+
       onSuccess(data);
     });
   };
@@ -183,7 +183,7 @@ function PostCommentWrite({
     <>
       <h2>{id}번 글에 대한 댓글 작성</h2>
 
-      <form className="p-2" onSubmit={handleCommentWriteFormSubmit}>
+      <form className="flex gap-2 items-center" onSubmit={handleCommentWriteFormSubmit}>
         <textarea
           className="border p-2 rounded"
           name="content"
@@ -283,12 +283,12 @@ function PostCommentListItem({
   };
 
   return (
-    <li className="flex gap-2 items-center">
+    <li className="flex gap-2 items-start">
       <span>{comment.id} : </span>
-      {!modifyMode && <span>{comment.content}</span>}
+      {!modifyMode && (<span style={{ whiteSpace: "pre-line" }}>{comment.content}</span>)}
       {modifyMode && (
         <form
-          className="flex gap-2 items-center"
+          className="flex gap-2 items-start"
           onSubmit={handleSubmit}
         >
           <textarea
@@ -301,7 +301,7 @@ function PostCommentListItem({
             autoFocus
           />
           <button className="p-2 rounded border" type="submit">
-            수정
+            저장
           </button>
         </form>
       )}
