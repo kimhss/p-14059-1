@@ -3,8 +3,8 @@
 import { apiFetch } from "@/lib/backend/client";
 import type { PostCommentDto, PostWithContentDto } from "@/type/post";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 function usePost(id: number) {
   const [post, setPost] = useState<PostWithContentDto | null>(null);
@@ -17,22 +17,81 @@ function usePost(id: number) {
       });
   }, []);
 
+  const deletePost = (id: number, onSuccess: () => void) => {
+    apiFetch(`/api/v1/posts/${id}`, {
+      method: "DELETE",
+    }).then(onSuccess);
+  };
+
   return {
     post,
+    deletePost,
   };
 }
 
-function PostInfo({ post }: { post: PostWithContentDto }) {
-  const router = useRouter();
+function usePostComments(id: number) {
+  const [postComments, setPostComments] = useState<PostCommentDto[] | null>(
+    null
+  );
 
-  const deletePost = (id: number) => {
-    apiFetch(`/api/v1/posts/${id}`, {
+  useEffect(() => {
+    apiFetch(`/api/v1/posts/${id}/comments`)
+      .then(setPostComments)
+      .catch((error) => {
+        alert(`${error.resultCode} : ${error.msg}`);
+      });
+  }, []);
+
+  const deleteComment = (
+    id: number,
+    commentId: number,
+    onSuccess: (data: any) => void
+  ) => {
+    apiFetch(`/api/v1/posts/${id}/comments/${commentId}`, {
       method: "DELETE",
     }).then((data) => {
-      alert(data.msg);
-      router.replace("/posts");
+      if (postComments == null) return;
+
+      setPostComments(postComments.filter((c) => c.id != commentId));
+
+      onSuccess(data);
     });
   };
+
+  const writeComment = (
+    id: number,
+    content: string,
+    onSuccess: (data: any) => void
+  ) => {
+    apiFetch(`/api/v1/posts/${id}/comments`, {
+      method: "POST",
+      body: JSON.stringify({
+        content,
+      }),
+    }).then((data) => {
+      if (postComments == null) return;
+
+      setPostComments([...postComments, data.data]);
+
+      onSuccess(data);
+    });
+  };
+
+  return {
+    postComments,
+    deleteComment,
+    writeComment,
+  };
+}
+
+function PostInfo({
+  post,
+  deletePost,
+}: {
+  post: PostWithContentDto;
+  deletePost: (id: number, onSuccess: () => void) => void;
+}) {
+  const router = useRouter();
 
   return (
     <>
@@ -45,7 +104,9 @@ function PostInfo({ post }: { post: PostWithContentDto }) {
           className="p-2 rounded border"
           onClick={() =>
             confirm(`${post.id}번 글을 정말로 삭제하시겠습니까?`) &&
-            deletePost(post.id)
+            deletePost(post.id, () => {
+              router.replace("/posts");
+            })
           }
         >
           삭제
@@ -61,24 +122,22 @@ function PostInfo({ post }: { post: PostWithContentDto }) {
 function PostCommentWriteAndList({
   id,
   postComments,
-  setPostComments,
+  deleteComment,
+  writeComment,
 }: {
   id: number;
   postComments: PostCommentDto[] | null;
-  setPostComments: (postComments: PostCommentDto[]) => void;
+  deleteComment: (
+    id: number,
+    commentId: number,
+    onSuccess: (data: any) => void
+  ) => void;
+  writeComment: (
+    id: number,
+    content: string,
+    onSuccess: (data: any) => void
+  ) => void;
 }) {
-
-  const deleteComment = (id: number, commentId: number) => {
-    apiFetch(`/api/v1/posts/${id}/comments/${commentId}`, {
-      method: "DELETE",
-    }).then((data) => {
-      alert(data.msg);
-
-      if (postComments == null) return;
-
-      setPostComments(postComments.filter((c) => c.id != commentId));
-    });
-  };
 
   const handleCommentWriteFormSubmit = (
     e: React.FormEvent<HTMLFormElement>
@@ -93,7 +152,6 @@ function PostCommentWriteAndList({
 
     contentTextarea.value = contentTextarea.value.trim();
 
-    //
     if (contentTextarea.value.length === 0) {
       alert("댓글 내용을 입력해주세요.");
       contentTextarea.focus();
@@ -105,20 +163,10 @@ function PostCommentWriteAndList({
       contentTextarea.focus();
       return;
     }
-    //
 
-    apiFetch(`/api/v1/posts/${id}/comments`, {
-      method: "POST",
-      body: JSON.stringify({
-        content: contentTextarea.value,
-      }),
-    }).then((data) => {
+    writeComment(id, contentTextarea.value, (data) => {
       alert(data.msg);
       contentTextarea.value = "";
-
-      if (postComments == null) return;
-
-      setPostComments([...postComments, data.data]);
     });
   };
 
@@ -156,7 +204,9 @@ function PostCommentWriteAndList({
                 className="p-2 rounded border"
                 onClick={() =>
                   confirm(`${comment.id}번 댓글을 정말로 삭제하시겠습니까?`) &&
-                  deleteComment(id, comment.id)
+                  deleteComment(id, comment.id, (data) => {
+                    alert(data.msg);
+                  })
                 }
               >
                 삭제
@@ -169,20 +219,13 @@ function PostCommentWriteAndList({
   );
 }
 
-export default function Page({ params }: { params: Promise<{ id: number }> }) {
-  const { id } = use(params);
+export default function Page() {
+  const { id : idStr } = useParams<{ id : string }>();
+  const id = Number(idStr);
 
-  const { post } = usePost(id);
+  const { post, deletePost } = usePost(id);
 
-  const [postComments, setPostComments] = useState<PostCommentDto[] | null>(null);
-
-  useEffect(() => {
-    apiFetch(`/api/v1/posts/${id}/comments`)
-      .then(setPostComments)
-      .catch((error) => {
-        alert(`${error.resultCode} : ${error.msg}`);
-      });
-  }, []);
+  const { postComments, deleteComment, writeComment } = usePostComments(id);
 
   if (post == null) return <div>로딩중...</div>;
 
@@ -190,12 +233,13 @@ export default function Page({ params }: { params: Promise<{ id: number }> }) {
     <>
       <h1>글 상세페이지</h1>
 
-      <PostInfo post={post} />
+      <PostInfo post={post} deletePost={deletePost} />
 
       <PostCommentWriteAndList
         id={id}
         postComments={postComments}
-        setPostComments={setPostComments}
+        deleteComment={deleteComment}
+        writeComment={writeComment}
       />
     </>
   );
