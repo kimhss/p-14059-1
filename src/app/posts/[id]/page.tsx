@@ -183,15 +183,7 @@ function PostCommentList({
 }: {
   postCommentsState: ReturnType<typeof usePostComments>;
 }) {
-  const { id, postComments, deleteComment: _deleteComment } = postCommentsState;
-
-  const deleteComment = (commentId: number) => {
-    if (!confirm(`${commentId}번 댓글을 정말로 삭제하시겠습니까?`)) return;
-
-    _deleteComment(commentId, (data) => {
-      alert(data.msg);
-    })
-  };
+  const { id, postComments } = postCommentsState;
 
   if (postComments == null) return <div>로딩중...</div>;
 
@@ -199,28 +191,56 @@ function PostCommentList({
     <>
       <h2>{id}번 글에 대한 댓글 목록</h2>
 
-      {postComments.length == 0 && (
+      {postComments != null && postComments.length == 0 && (
         <div>댓글이 없습니다.</div>
       )}
 
-      {postComments.length > 0 && (
+      {postComments != null && postComments.length > 0 && (
         <ul>
           {postComments.map((comment) => (
-            <li key={comment.id}>
-              {comment.id} : {comment.content}
-              <button
-                className="p-2 rounded border"
-                onClick={() => deleteComment(comment.id)}
-              >
-                삭제
-              </button>
-            </li>
+            <PostCommentListItem
+              key={comment.id}
+              comment={comment}
+              postCommentsState={postCommentsState}
+            />
           ))}
         </ul>
       )}
     </>
-  )
+  );
 }
+
+
+function PostCommentListItem({
+  comment,
+  postCommentsState,
+}: {
+  comment: PostCommentDto;
+  postCommentsState: ReturnType<typeof usePostComments>;
+}) {
+  const { deleteComment: _deleteComment } = postCommentsState;
+
+  const deleteComment = (commentId: number) => {
+    if (!confirm(`${commentId}번 댓글을 정말로 삭제하시겠습니까?`)) return;
+
+    _deleteComment(commentId, (data) => {
+      alert(data.msg);
+    });
+  };
+
+  return (
+    <li>
+      {comment.id} : {comment.content}
+      <button
+        className="p-2 rounded border"
+        onClick={() => deleteComment(comment.id)}
+      >
+        삭제
+      </button>
+    </li>
+  );
+}
+
 
 function PostCommentWriteAndList({
   postCommentsState,
