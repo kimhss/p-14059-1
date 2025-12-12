@@ -84,10 +84,13 @@ function usePostComments(id: number) {
   };
 }
 
-function PostInfo({ postState }: { postState: ReturnType<typeof usePost> }) {
-  
+function PostInfo({
+  postState,
+}: {
+  postState: ReturnType<typeof usePost>;
+}) {
   const router = useRouter();
-  const { post, deletePost : _deletePost } = postState;
+  const { post, deletePost: _deletePost } = postState;
 
   if (post == null) return <div>로딩중...</div>;
 
@@ -96,7 +99,7 @@ function PostInfo({ postState }: { postState: ReturnType<typeof usePost> }) {
 
     _deletePost(post.id, () => {
       router.replace("/posts");
-    })
+    });
   };
 
   return (
@@ -106,7 +109,10 @@ function PostInfo({ postState }: { postState: ReturnType<typeof usePost> }) {
       <div style={{ whiteSpace: "pre-line" }}>{post.content}</div>
 
       <div className="flex gap-2">
-        <button className="p-2 rounded border" onClick={deletePost}>
+        <button
+          className="p-2 rounded border"
+          onClick={deletePost}
+        >
           삭제
         </button>
         <Link className="p-2 rounded border" href={`/posts/${post.id}/edit`}>
@@ -117,16 +123,14 @@ function PostInfo({ postState }: { postState: ReturnType<typeof usePost> }) {
   );
 }
 
-function PostCommentWriteAndList({
+function PostCommentWrite({
   id,
   postCommentsState,
 }: {
   id: number;
-  postCommentsState: ReturnType<typeof usePostComments>
+  postCommentsState: ReturnType<typeof usePostComments>;
 }) {
-  const { postComments, deleteComment, writeComment } = postCommentsState;
-
-  if (postComments == null) return <div>로딩중...</div>;
+  const { writeComment } = postCommentsState;
 
   const handleCommentWriteFormSubmit = (
     e: React.FormEvent<HTMLFormElement>
@@ -135,9 +139,7 @@ function PostCommentWriteAndList({
 
     const form = e.target as HTMLFormElement;
 
-    const contentTextarea = form.elements.namedItem(
-      "content"
-    ) as HTMLTextAreaElement;
+    const contentTextarea = form.elements.namedItem("content") as HTMLTextAreaElement;
 
     contentTextarea.value = contentTextarea.value.trim();
 
@@ -175,28 +177,45 @@ function PostCommentWriteAndList({
           작성
         </button>
       </form>
+    </>
+  );
+}
 
+function PostCommentList({
+  id,
+  postCommentsState,
+}: {
+  id: number;
+  postCommentsState: ReturnType<typeof usePostComments>;
+}) {
+  const { postComments, deleteComment: _deleteComment } = postCommentsState;
+
+  const deleteComment = (commentId: number) => {
+    if (!confirm(`${id}번 댓글을 정말로 삭제하시겠습니까?`)) return;
+
+    _deleteComment(id, commentId, (data) => {
+      alert(data.msg);
+    })
+  };
+
+  if (postComments == null) return <div>로딩중...</div>;
+
+  return (
+    <>
       <h2>댓글 목록</h2>
 
-      {postComments == null && <div>댓글 로딩중...</div>}
-
-      {postComments != null && postComments.length == 0 && (
+      {postComments.length == 0 && (
         <div>댓글이 없습니다.</div>
       )}
 
-      {postComments != null && postComments.length > 0 && (
+      {postComments.length > 0 && (
         <ul>
           {postComments.map((comment) => (
             <li key={comment.id}>
               {comment.id} : {comment.content}
               <button
                 className="p-2 rounded border"
-                onClick={() =>
-                  confirm(`${comment.id}번 댓글을 정말로 삭제하시겠습니까?`) &&
-                  deleteComment(id, comment.id, (data) => {
-                    alert(data.msg);
-                  })
-                }
+                onClick={() => deleteComment(comment.id)}
               >
                 삭제
               </button>
@@ -204,6 +223,22 @@ function PostCommentWriteAndList({
           ))}
         </ul>
       )}
+    </>
+  )
+}
+
+function PostCommentWriteAndList({
+  id,
+  postCommentsState,
+}: {
+  id: number;
+  postCommentsState: ReturnType<typeof usePostComments>;
+}) {
+  return (
+    <>
+      <PostCommentWrite id={id} postCommentsState={postCommentsState} />
+
+      <PostCommentList id={id} postCommentsState={postCommentsState} />
     </>
   );
 }
